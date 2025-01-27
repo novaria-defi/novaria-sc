@@ -1,0 +1,14 @@
+// SPDX-License-Identifier: UNLICENSED
+
+pragma solidity ^0.8.13;
+
+import {Test, console} from "forge-std/Test.sol";
+import {OpenPositionGMX} from "src/OpenPositionShortGMX.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+contract OpenPositionShortGMXTest is Test {
+    address public usdc = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address public wbtc = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
+    address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
+    address public orderVault = 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5;
+}
