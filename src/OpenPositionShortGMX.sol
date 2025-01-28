@@ -3,6 +3,14 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
+library Position{
+    struct Addresses {
+        address account;
+        address market;
+        address collateralToken;
+    }
+}
+
 library Order {
     enum OrderType {
         // @dev MarketSwap: swap token A to token B at the current market price
@@ -55,7 +63,7 @@ contract OpenPositionShortGMX {
     
         IExchangeRouter(exchangeRouter).createOrder(
             IBaseOrderUtils.CreateOrderParams({
-                orderType: Order.OrderType.MarketIncrease,
+                orderType: Order.OrderType.MarketSwap,
                 isLong: false,
                 shouldUnwrapNativeToken: false,
                 autoCancel: false
@@ -65,4 +73,8 @@ contract OpenPositionShortGMX {
         IERC20(wbtc).transfer(msg.sender, payableAmount);
     }
     
+    function getPositionKey(address _account, address _market, address _collateralToken, bool _isLong) public pure returns (bytes32) {
+        bytes32 _key = keccak256(abi.encode(_account, _market, _collateralToken, _isLong));
+        return _key;
+    }
 }
