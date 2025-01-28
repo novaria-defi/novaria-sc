@@ -3,13 +3,32 @@ pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-library Position{
-    struct Addresses {
-        address account;
-        address market;
-        address collateralToken;
-    }
-}
+// library Position{
+//     struct Addresses {
+//         address account;
+//         address market;
+//         address collateralToken;
+//     }
+
+//     struct Numbers {
+//         uint256 sizeInTokens;
+//         uint256 collateralAmount;
+//     }
+
+//     struct Flags {
+//         bool isLong;
+//     }
+
+//     struct Props {
+//         Addresses addresses;
+//         Numbers numbers;
+//         Flags flags;
+//     }
+
+//     function sizeInTokens(Props memory props) internal pure returns (uint256) {
+//         return props.numbers.sizeInTokens;
+//     }
+// }
 
 library Order {
     enum OrderType {
@@ -50,10 +69,17 @@ interface IExchangeRouter {
     function createOrder(
         IBaseOrderUtils.CreateOrderParams calldata params
     ) external payable returns (bytes32);
+
+    function updateOrder(
+        bytes32 key,
+        uint256 sizeDeltaUsd
+    ) external payable;
 }
 
 contract OpenPositionShortGMX {
     address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
+    address public wbtc = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
+    address public usdc = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
 
     function createOrder(uint256 payableAmount) external {
         IERC20(wbtc).transferFrom(msg.sender, address(this), payableAmount);
@@ -71,8 +97,10 @@ contract OpenPositionShortGMX {
         IERC20(wbtc).transfer(msg.sender, payableAmount);
     }
     
-    function getPositionKey(address _account, address _market, address _collateralToken, bool _isLong) public pure returns (bytes32) {
-        bytes32 _key = keccak256(abi.encode(_account, _market, _collateralToken, _isLong));
-        return _key;
+    function updateOrder(address tokenBalance) external {
+        IExchangeRouter(exchangeRouter).updateOrder(
+            bytes32(0),
+            0
+        );
     }
 }
