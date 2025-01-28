@@ -54,8 +54,6 @@ interface IExchangeRouter {
 
 contract OpenPositionShortGMX {
     address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
-    address public usdc;
-    address public wbtc;
 
     function createOrder(uint256 payableAmount) external {
         IERC20(wbtc).transferFrom(msg.sender, address(this), payableAmount);
