@@ -52,7 +52,7 @@ contract OpenPositionShortGMXTest is Test {
     address public alice = makeAddr("alice");
 
     function setUp() public {
-        vm.createSelectFork("https://arb-mainnet.g.alchemy.com/v2/", 300080856);
+        vm.createSelectFork("ALCHEMY_KEY", 300080856);
         openPositionShortGMX = new OpenPositionShortGMX();
         deal(wbtc, alice, 1e8);
     }
