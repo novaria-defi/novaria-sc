@@ -49,24 +49,37 @@ contract OpenPositionShortGMXTest is Test {
     address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
     address public orderVault = 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5;
 
+    address public alice = makeAddr("alice");
+
     function setUp() public {
         vm.createSelectFork("ALCHEMY_KEY", 300080856);
         openPositionShortGMX = new OpenPositionShortGMX();
+        deal(wbtc, alice, 1e8);
     }
 
     function test_createOrder() public {
-        deal(wbtc, address(this), 1e8);
+        vm.startPrank(alice);
         IERC20(wbtc).approve(address(openPositionShortGMX), 1e8);
 
         vm.expectRevert();
         openPositionShortGMX.createOrder(1e8);
     
-        uint256 wbtcBalance = IERC20(wbtc).balanceOf(address(this));
+        uint256 wbtcBalance = IERC20(wbtc).balanceOf(alice);
         console.log("wbtcBalance: ", wbtcBalance);
+
+        vm.stopPrank();
     }
-    
-    function test_positionKey() public {
-        bytes32 positionKey = openPositionShortGMX.getPositionKey(address(this), wbtc, wbtc, false);
-        console.log("positionKey:", positionKey);
+
+    function test_updateOrder() public {
+        vm.startPrank(alice);
+        IERC20(wbtc).approve(address(openPositionShortGMX), 1e8);
+
+        uint256 wbtcBalance = IERC20(wbtc).balanceOf(alice);
+        console.log("wbtcBalance: ", wbtcBalance);
+
+        vm.expectRevert();
+        openPositionShortGMX.updateOrder(alice);
+
+        vm.stopPrank();
     }
 }
