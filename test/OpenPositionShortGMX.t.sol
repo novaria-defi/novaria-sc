@@ -16,7 +16,7 @@ contract OpenPositionShortGMXTest is Test {
     address public gvl = 0x489ee077994B6658eAfA855C308275EAd8097C4A; // GMX vault liquidity
 
     function setUp() public {
-        vm.createSelectFork("ALCHEMY_KEY", 300538539);
+        vm.createSelectFork("https://arb-mainnet.g.alchemy.com/v2/ALCHEMY_KEY", 300538539);
         
         openPositionShortGMX = new OpenPositionShortGMX();
         deal(wbtc, alice, 1e8); // 10 WBTC (karena 8 desimal)

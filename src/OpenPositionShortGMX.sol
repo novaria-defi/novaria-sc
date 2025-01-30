@@ -137,7 +137,7 @@ contract OpenPositionShortGMX {
                 minOutputAmount: 0,
                 validFromTime: 0
             }),
-            orderType: Order.OrderType.MarketSwap,
+            orderType: Order.OrderType.MarketIncrease,
             decreasePositionSwapType: Order.DecreasePositionSwapType.NoSwap,
             isLong: false,
             shouldUnwrapNativeToken: false,
@@ -150,6 +150,6 @@ contract OpenPositionShortGMX {
     }
 
     function cekPositionOrder() public {
-        
+
     }
 }
