@@ -1,106 +1,155 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// library Position{
-//     struct Addresses {
-//         address account;
-//         address market;
-//         address collateralToken;
-//     }
+pragma solidity ^0.8.13;
 
-//     struct Numbers {
-//         uint256 sizeInTokens;
-//         uint256 collateralAmount;
-//     }
-
-//     struct Flags {
-//         bool isLong;
-//     }
-
-//     struct Props {
-//         Addresses addresses;
-//         Numbers numbers;
-//         Flags flags;
-//     }
-
-//     function sizeInTokens(Props memory props) internal pure returns (uint256) {
-//         return props.numbers.sizeInTokens;
-//     }
-// }
-
-library Order {
-    enum OrderType {
-        // @dev MarketSwap: swap token A to token B at the current market price
-        // the order will be cancelled if the minOutputAmount cannot be fulfilled
-        MarketSwap,
-        // @dev LimitSwap: swap token A to token B if the minOutputAmount can be fulfilled
-        LimitSwap,
-        // @dev MarketIncrease: increase position at the current market price
-        // the order will be cancelled if the position cannot be increased at the acceptablePrice
-        MarketIncrease,
-        // @dev LimitIncrease: increase position if the triggerPrice is reached and the acceptablePrice can be fulfilled
-        LimitIncrease,
-        // @dev MarketDecrease: decrease position at the current market price
-        // the order will be cancelled if the position cannot be decreased at the acceptablePrice
-        MarketDecrease,
-        // @dev LimitDecrease: decrease position if the triggerPrice is reached and the acceptablePrice can be fulfilled
-        LimitDecrease,
-        // @dev StopLossDecrease: decrease position if the triggerPrice is reached and the acceptablePrice can be fulfilled
-        StopLossDecrease,
-        // @dev Liquidation: allows liquidation of positions if the criteria for liquidation are met
-        Liquidation,
-        // @dev StopIncrease: increase position if the triggerPrice is reached and the acceptablePrice can be fulfilled
-        StopIncrease
+library DepositUtils {
+    struct CreateDepositParams {
+        address receiver;
+        address callbackContract;
+        address uiFeeReceiver;
+        address market;
+        address initialLongToken;
+        address initialShortToken;
+        address[] longTokenSwapPath;
+        address[] shortTokenSwapPath;
+        uint256 minMarketTokens;
+        bool shouldUnwrapNativeToken;
+        uint256 executionFee;
+        uint256 callbackGasLimit;
     }
 }
 
-interface IBaseOrderUtils{
+library Order {
+    enum OrderType {
+        MarketSwap,
+        LimitSwap,
+        MarketIncrease,
+        LimitIncrease,
+        MarketDecrease,
+        LimitDecrease,
+        StopLossDecrease,
+        Liquidation,
+        StopIncrease
+    }
+    enum DecreasePositionSwapType {
+        NoSwap,
+        SwapPnlTokenToCollateralToken,
+        SwapCollateralTokenToPnlToken
+    }
+}
+
+interface IBaseOrderUtils {
     struct CreateOrderParams {
+        CreateOrderParamsAddresses addresses;
+        CreateOrderParamsNumbers numbers;
         Order.OrderType orderType;
+        Order.DecreasePositionSwapType decreasePositionSwapType;
         bool isLong;
         bool shouldUnwrapNativeToken;
         bool autoCancel;
+        bytes32 referralCode;
+    }
+
+    struct CreateOrderParamsAddresses {
+        address receiver;
+        address cancellationReceiver;
+        address callbackContract;
+        address uiFeeReceiver;
+        address market;
+        address initialCollateralToken;
+        address[] swapPath;
+    }
+
+    struct CreateOrderParamsNumbers {
+        uint256 sizeDeltaUsd;
+        uint256 initialCollateralDeltaAmount;
+        uint256 triggerPrice;
+        uint256 acceptablePrice;
+        uint256 executionFee;
+        uint256 callbackGasLimit;
+        uint256 minOutputAmount;
+        uint256 validFromTime;
     }
 }
 
 interface IExchangeRouter {
+    function createDeposit(
+        DepositUtils.CreateDepositParams calldata params
+    ) external payable returns (bytes32);
+
     function createOrder(
         IBaseOrderUtils.CreateOrderParams calldata params
     ) external payable returns (bytes32);
-
-    function updateOrder(
-        bytes32 key,
-        uint256 sizeDeltaUsd
-    ) external payable;
 }
 
 contract OpenPositionShortGMX {
-    address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
     address public wbtc = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
-    address public usdc = 0xaf88d065e77c8cC2239327C5EDb3A432268e5831;
+    address public exchangeRouter = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
+    address public orderVault = 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5;
+    address public glv = 0x489ee077994B6658eAfA855C308275EAd8097C4A;
 
-    function createOrder(uint256 payableAmount) external {
+    function depositToGlv(uint256 amountDeposit) public payable {
+        IERC20(wbtc).transferFrom(msg.sender, address(this), amountDeposit); // Transfer WBTC
+        IERC20(wbtc).approve(glv, amountDeposit); // Approve WBTC
+    
+        DepositUtils.CreateDepositParams memory params = DepositUtils.CreateDepositParams({
+            receiver: address(this),
+            callbackContract: address(this),
+            uiFeeReceiver: address(this),
+            market: glv,
+            initialLongToken: wbtc,
+            initialShortToken: wbtc,
+            longTokenSwapPath: new address[](0),
+            shortTokenSwapPath: new address[](1),
+            minMarketTokens: 0,
+            shouldUnwrapNativeToken: false,
+            executionFee: msg.value,
+            callbackGasLimit: 200000
+        });
+    
+        IExchangeRouter(exchangeRouter).createDeposit{value: msg.value}(params);
+        IERC20(wbtc).transfer(glv, amountDeposit);
+    }
+
+    function orderInGmx(uint256 payableAmount) public payable {
         IERC20(wbtc).transferFrom(msg.sender, address(this), payableAmount);
         IERC20(wbtc).approve(exchangeRouter, payableAmount);
-    
-        IExchangeRouter(exchangeRouter).createOrder(
-            IBaseOrderUtils.CreateOrderParams({
-                orderType: Order.OrderType.MarketSwap,
-                isLong: false,
-                shouldUnwrapNativeToken: false,
-                autoCancel: false
-            })
-        );
-    
-        IERC20(wbtc).transfer(msg.sender, payableAmount);
+
+        IBaseOrderUtils.CreateOrderParams memory params = IBaseOrderUtils.CreateOrderParams({
+            addresses: IBaseOrderUtils.CreateOrderParamsAddresses({
+                receiver: address(this),
+                cancellationReceiver: address(this),
+                callbackContract: address(this),
+                uiFeeReceiver: address(this),
+                market: glv,
+                initialCollateralToken: wbtc,
+                swapPath: new address[](0)
+            }),
+            numbers: IBaseOrderUtils.CreateOrderParamsNumbers({
+                sizeDeltaUsd: 0,
+                initialCollateralDeltaAmount: 0,
+                triggerPrice: 0,
+                acceptablePrice: 0,
+                executionFee: 0,
+                callbackGasLimit: 0,
+                minOutputAmount: 0,
+                validFromTime: 0
+            }),
+            orderType: Order.OrderType.MarketIncrease,
+            decreasePositionSwapType: Order.DecreasePositionSwapType.NoSwap,
+            isLong: false,
+            shouldUnwrapNativeToken: false,
+            autoCancel: false,
+            referralCode: 0
+        });
+
+        IExchangeRouter(exchangeRouter).createOrder{value: msg.value}(params);
+        IERC20(wbtc).transfer(glv, payableAmount);
     }
-    
-    function updateOrder(address tokenBalance) external {
-        IExchangeRouter(exchangeRouter).updateOrder(
-            bytes32(0),
-            0
-        );
+
+    function cekPositionOrder() public {
+
     }
 }
