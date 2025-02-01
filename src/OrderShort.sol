@@ -43,7 +43,7 @@ interface IBaseOrderUtils {
         address uiFeeReceiver;
         address market;
         address initialCollateralToken;
-        address[2] swapPath;
+        address[] swapPath;
     }
 
     struct CreateOrderParamsNumbers {
@@ -77,6 +77,11 @@ interface IRouter {
     function multicall(bytes[] calldata data) external payable;
 }
 
+interface IWNT {
+    function deposit() external payable;
+    function withdraw(uint256 amount) external;
+}
+
 contract OrderShort is ERC20 {
     address public owner;
 
@@ -92,7 +97,7 @@ contract OrderShort is ERC20 {
         owner = msg.sender;
     }
 
-    function order(uint256 amount) public payable {
+    function deposit(uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than zero");
         bool success = IERC20(WBTC).transferFrom(
             msg.sender,
@@ -100,8 +105,10 @@ contract OrderShort is ERC20 {
             amount
         );
         require(success, "WNT transfer failed");
+    }
 
-        IERC20(WBTC).transfer(ROUTER, amount);
+    function swapToEth(uint256 amount) public payable {
+        IERC20(WBTC).approve(ROUTER, amount);
 
         address[] memory swapPath = new address[](2);
         swapPath[0] = WBTC;
@@ -113,13 +120,17 @@ contract OrderShort is ERC20 {
             0,
             payable(address(this))
         );
+    }
 
-        // bytes[2] memory calls;
-        // calls[1] = abi.encodeWithSignature(
-        //     "sendWnt(address,uint256)",
-        //     ORDER_VAULT,
-        //     1e16
-        // );
+    function order(uint256 amount) public payable {
+        address[] memory swapPath;
+
+        bytes[2] memory calls;
+        calls[1] = abi.encodeWithSignature(
+            "sendWnt(address,uint256)",
+            ORDER_VAULT,
+            amount
+        );
         // calls[1] = abi.encodeWithSignature(
         //     "createOrder((address,address,address,address,address,address,address[],(uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256),uint8,uint8,bool,bool,bool,bytes32))",
         //     IBaseOrderUtils.CreateOrderParams({
@@ -133,7 +144,7 @@ contract OrderShort is ERC20 {
         //             swapPath: swapPath
         //         }),
         //         numbers: IBaseOrderUtils.CreateOrderParamsNumbers({
-        //             sizeDeltaUsd: 1e16,
+        //             sizeDeltaUsd: amount,
         //             initialCollateralDeltaAmount: 0,
         //             triggerPrice: 0,
         //             acceptablePrice: 0,
@@ -151,6 +162,8 @@ contract OrderShort is ERC20 {
         //     })
         // );
 
-        // IExchangeRouter(EXCHANGE_ROUTER).multicall{value: 0}(calls);
+        IExchangeRouter(EXCHANGE_ROUTER).multicall{value: amount}(calls);
     }
+
+    receive() external payable {}
 }
