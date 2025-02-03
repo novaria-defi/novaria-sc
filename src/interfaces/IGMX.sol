@@ -39,7 +39,9 @@ interface IExchangeRouter {
         bytes32 referralCode;
     }
 
-    function createOrder(CreateOrderParams calldata params) external payable;
+    function createOrder(
+        CreateOrderParams calldata params
+    ) external payable returns (bytes32);
 
     function multicall(
         bytes[] calldata data
@@ -98,4 +100,92 @@ interface IReaderUtils {
         uint256 longInterestUsd;
         uint256 shortInterestUsd;
     }
+}
+
+interface IReaderOrder {
+    struct Addresses {
+        address account;
+        address receiver;
+        address callbackContract;
+        address uiFeeReceiver;
+        address market;
+        address initialCollateralToken;
+        address[] swapPath;
+    }
+
+    struct Numbers {
+        uint8 orderType;
+        uint8 decreasePositionSwapType;
+        uint256 sizeDeltaUsd;
+        uint256 initialCollateralDeltaAmount;
+        uint256 triggerPrice;
+        uint256 acceptablePrice;
+        uint256 executionFee;
+        uint256 callbackGasLimit;
+        uint256 minOutputAmount;
+        uint256 updatedAtBlock;
+    }
+
+    struct Flags {
+        bool isLong;
+        bool shouldUnwrapNativeToken;
+        bool isFrozen;
+    }
+
+    struct Props {
+        Addresses addresses;
+        Numbers numbers;
+        Flags flags;
+    }
+
+    function getOrder(
+        address dataStore,
+        bytes32 key
+    ) external view returns (Props memory);
+}
+
+interface IReaderPosition {
+    struct Addresses {
+        address account;
+        address market;
+        address collateralToken;
+    }
+
+    struct Numbers {
+        uint256 sizeInUsd;
+        uint256 sizeInTokens;
+        uint256 collateralAmount;
+        uint256 borrowingFactor;
+        uint256 fundingFeeAmountPerSize;
+        uint256 longTokenClaimableFundingAmountPerSize;
+        uint256 shortTokenClaimableFundingAmountPerSize;
+        uint256 increasedAtBlock;
+        uint256 decreasedAtBlock;
+    }
+
+    struct Flags {
+        bool isLong;
+    }
+
+    struct Props {
+        Addresses addresses;
+        Numbers numbers;
+        Flags flags;
+    }
+
+    function getPosition(
+        address dataStore,
+        bytes32 key
+    ) external view returns (Props memory);
+}
+
+interface IRouter {
+    function swapTokensToETH(
+        address[] memory _path,
+        uint256 _amountIn,
+        uint256 _minOut,
+        address payable _receiver
+    ) external;
+
+    function multicall(bytes[] calldata data) external payable;
 }

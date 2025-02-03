@@ -8,71 +8,7 @@ import {console} from "forge-std/console.sol";
 
 pragma solidity ^0.8.13;
 
-library Order {
-    enum OrderType {
-        MarketSwap,
-        LimitSwap,
-        MarketIncrease,
-        LimitIncrease,
-        MarketDecrease,
-        LimitDecrease,
-        StopLossDecrease,
-        Liquidation,
-        StopIncrease
-    }
-    enum DecreasePositionSwapType {
-        NoSwap,
-        SwapPnlTokenToCollateralToken,
-        SwapCollateralTokenToPnlToken
-    }
-}
-
-interface IBaseOrderUtils {
-    struct CreateOrderParams {
-        CreateOrderParamsAddresses addresses;
-        CreateOrderParamsNumbers numbers;
-        Order.OrderType orderType;
-        Order.DecreasePositionSwapType decreasePositionSwapType;
-        bool isLong;
-        bool shouldUnwrapNativeToken;
-        bool autoCancel;
-        bytes32 referralCode;
-    }
-
-    struct CreateOrderParamsAddresses {
-        address receiver;
-        address cancellationReceiver;
-        address callbackContract;
-        address uiFeeReceiver;
-        address market;
-        address initialCollateralToken;
-        address[] swapPath;
-    }
-
-    struct CreateOrderParamsNumbers {
-        uint256 sizeDeltaUsd;
-        uint256 initialCollateralDeltaAmount;
-        uint256 triggerPrice;
-        uint256 acceptablePrice;
-        uint256 executionFee;
-        uint256 callbackGasLimit;
-        uint256 minOutputAmount;
-        uint256 validFromTime;
-    }
-}
-
-interface IRouter {
-    function swapTokensToETH(
-        address[] memory _path,
-        uint256 _amountIn,
-        uint256 _minOut,
-        address payable _receiver
-    ) external;
-
-    function multicall(bytes[] calldata data) external payable;
-}
-
-contract OrderShort is ERC20, ReentrancyGuard {
+contract OrderShort {
     address public owner;
 
     address public WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
@@ -86,10 +22,6 @@ contract OrderShort is ERC20, ReentrancyGuard {
     address public DATASTORE = 0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
     address public MARKET = 0x47c031236e19d024b42f8AE6780E44A573170703;
     address public MARKET_TOKEN = 0xcaCb964144f9056A8f99447a303E60b4873Ca9B4;
-
-    constructor() ERC20("Short Vault", "SHRVT") {
-        owner = msg.sender;
-    }
 
     function deposit(address collateralToken, uint256 amount) public payable {
         require(amount > 0, "Amount must be greater than zero");
@@ -122,24 +54,18 @@ contract OrderShort is ERC20, ReentrancyGuard {
         address collateralToken,
         uint256 acceptablePrice,
         uint256 executionFee
-    ) external payable nonReentrant {
+    ) external payable {
         require(msg.value >= executionFee, "Insufficient execution fee");
 
         IExchangeRouter router = IExchangeRouter(EXCHANGE_ROUTER);
 
-        console.log(
-            "WBTC Balance of current contract:",
-            IERC20(WBTC).balanceOf(address(this))
-        );
+        router.sendWnt{value: executionFee}(ORDER_VAULT, executionFee);
 
-        uint256 allowance = IERC20(collateralToken).allowance(
-            address(this),
-            ORDER_VAULT
-        );
-        console.log("WBTC Allowance:", allowance);
+        IERC20(collateralToken).approve(ROUTER, collateralAmount);
+        router.sendTokens(collateralToken, ORDER_VAULT, collateralAmount);
 
         address[] memory swapPaths = new address[](1);
-        swapPaths[0] = MARKET_TOKEN;
+        swapPaths[0] = 0xcaCb964144f9056A8f99447a303E60b4873Ca9B4;
 
         IExchangeRouter.CreateOrderParams memory orderParams = IExchangeRouter
             .CreateOrderParams({
@@ -148,8 +74,8 @@ contract OrderShort is ERC20, ReentrancyGuard {
                     cancellationReceiver: address(0),
                     callbackContract: address(0),
                     uiFeeReceiver: 0xff00000000000000000000000000000000000001,
-                    market: MARKET,
-                    initialCollateralToken: collateralToken,
+                    market: 0x47c031236e19d024b42f8AE6780E44A573170703,
+                    initialCollateralToken: 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f,
                     swapPath: swapPaths
                 }),
                 numbers: IExchangeRouter.Numbers({
@@ -170,12 +96,8 @@ contract OrderShort is ERC20, ReentrancyGuard {
                 referralCode: bytes32(0)
             });
 
-        router.sendWnt{value: executionFee}(ORDER_VAULT, executionFee);
-
-        IERC20(collateralToken).approve(ROUTER, collateralAmount);
-        router.sendTokens(collateralToken, ORDER_VAULT, collateralAmount);
-
-        router.createOrder(orderParams);
+        bytes32 positionId = router.createOrder(orderParams);
+        console.logBytes32(positionId);
     }
 
     function getPrice(
