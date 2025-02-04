@@ -4,7 +4,7 @@ pragma solidity ^0.8.13;
 import {Test, console} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {VaultShort} from "../src/VaultShort.sol";
-import "../src/interfaces/IGMX.sol";
+import {IReaderOrder, IReaderPosition} from "../src/interfaces/IGMX.sol";
 
 
 contract VaultShortTest is Test {
@@ -39,5 +39,9 @@ contract VaultShortTest is Test {
         IReaderPosition.Props memory position = IReaderPosition(reader).getPosition(dataStore, positionId);
         console.log("position.numbers.sizeInUsd", position.numbers.sizeInUsd);
         console.log("position.flags.isLong", position.flags.isLong);
+
+        uint256 totalAsset = vaultShort.getTotalAsset();
+        console.log("Total Assets", totalAsset / 1e8);
+        console.log("Balance of", vaultShort.balanceOf(address(this))); // check balance of current contract
     }
 }
