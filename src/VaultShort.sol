@@ -109,5 +109,4 @@ contract VaultShort is ERC20 {
         
         return positionId;
     }
-
 }
