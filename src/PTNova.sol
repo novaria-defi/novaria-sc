@@ -10,6 +10,7 @@ contract PTNova is ERC20, Ownable {
     address public vaultToken;
 
     constructor(address _vaultToken) ERC20("PT Nova", "PTNOVA") Ownable(msg.sender) {
+        require(_vaultToken != address(0), "Invalid vault token address");
         vaultToken = _vaultToken;
     }
 
@@ -19,7 +20,9 @@ contract PTNova is ERC20, Ownable {
     }
 
     function mint(address to, uint256 amount) external {
-        require(msg.sender == vaultToken, "Only vault can mint");
+        require(msg.sender == vaultToken, "Only vault token can mint PTNOVA");
+        require(IERC20(vaultToken).balanceOf(to) >= amount, "Insufficient balance");
         _mint(to, amount);
     }
+
 }

@@ -19,6 +19,7 @@ contract YTNova is ERC20, Ownable {
     }
 
     function mint(address to, uint256 amount) external onlyPTNova {
+        require(msg.sender == ptAddress, "Only PTNova can call this function");
         _mint(to, amount);
     }
 

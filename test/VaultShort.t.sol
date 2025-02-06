@@ -4,6 +4,7 @@ pragma solidity ^0.8.13;
 import {Test, console} from "forge-std/Test.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {VaultShort} from "../src/VaultShort.sol";
+import {PTNova} from "../src/PTNova.sol";
 import {IReaderOrder, IReaderPosition} from "../src/interfaces/IGMX.sol";
 
 
@@ -14,12 +15,12 @@ contract VaultShortTest is Test {
     address public reader = 0xf60becbba223EEA9495Da3f606753867eC10d139;
 
     VaultShort public vaultShort;
-
+    PTNova public ptNova;
     function setUp() public {
         vm.createSelectFork("https://arb-mainnet.g.alchemy.com/v2/Ea4M-V84UObD22z2nNlwDD9qP8eqZuSI", 301883180);
 
         deal(wbtc, address(this), 10e8);
-        vaultShort = new VaultShort();
+        vaultShort = new VaultShort(address(ptNova));
     }
 
     function test_vault_short() public {

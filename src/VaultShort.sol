@@ -3,6 +3,7 @@
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IExchangeRouter, IReaderOrder} from "./interfaces/IGMX.sol";
+import {PTNova} from "./PTNova.sol";
 
 pragma solidity ^0.8.13;
 
@@ -24,9 +25,11 @@ contract VaultShort is ERC20 {
     address public DATASTORE = 0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
     
     bytes32 public positionId;
+    address public ptNova;
 
-    constructor() ERC20("Novaria Vault", "NOVA") {
+    constructor(address _ptNova) ERC20("Novaria Vault", "NOVA") {
         owner = msg.sender;
+        ptNova = _ptNova;
     }
 
     function getTotalAsset () public view returns (uint256){
@@ -106,4 +109,5 @@ contract VaultShort is ERC20 {
         
         return positionId;
     }
+
 }
