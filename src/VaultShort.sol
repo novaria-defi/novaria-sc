@@ -23,6 +23,8 @@ contract VaultShort is ERC20, Ownable {
     address public WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
     uint public leverage = 2;
 
+    event WithdrawVaultToken(address indexed account, uint256 amount);
+
     address public reader;
     address public dataStore;
 
@@ -36,6 +38,7 @@ contract VaultShort is ERC20, Ownable {
     address public ptToken;
     address public ytToken;
     mapping(bytes32 => uint256) public positionToTokenAmount;
+    uint256 public totalVaultToken;
 
     constructor(address _ptToken, address _ytToken) ERC20("Vault Nova", "vNova") Ownable(msg.sender) {
         ptToken = _ptToken;
@@ -138,6 +141,16 @@ contract VaultShort is ERC20, Ownable {
             position.flags.isLong
         );
     }    
+
+    function withdraw(uint256 shares) external {
+        totalVaultToken = balanceOf(address(this));
+        uint256 amount = (shares * totalVaultToken / totalSupply());
+
+        _burn(msg.sender, shares);
+        IERC20(address(this)).transfer(msg.sender, amount);
+
+        emit WithdrawVaultToken(msg.sender, amount);
+    }
 
     function depositToPT(uint256 amount) external {
         // Transfer vault token dari pengguna ke kontrak PT
