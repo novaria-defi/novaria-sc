@@ -111,3 +111,10 @@ interface IReaderPosition {
 
     function getPosition(address dataStore, bytes32 key) external view returns (Props memory);
 }
+
+interface IDataStore {
+    function getAddress(bytes32 key) external view returns (address);
+    function getUint(bytes32 key) external view returns (uint256);
+    function getBool(bytes32 key) external view returns (bool);
+    function getBytes32(bytes32 key) external view returns (bytes32);
+}

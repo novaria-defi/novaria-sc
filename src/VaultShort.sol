@@ -23,6 +23,9 @@ contract VaultShort is ERC20, Ownable {
     address public WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
     uint public leverage = 2;
 
+    address public reader;
+    address public dataStore;
+
     address public EXCHANGE_ROUTER = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
     address public ORDER_VAULT = 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5;
     address public ROUTER = 0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6;
@@ -101,6 +104,40 @@ contract VaultShort is ERC20, Ownable {
 
         return positionId;
     }
+
+    function getUserPosition(bytes32 positionId) public view returns (
+        address account, 
+        address market, 
+        address collateralToken, 
+        uint256 sizeInUsd, 
+        uint256 sizeInTokens, 
+        uint256 collateralAmount, 
+        uint256 borrowingFactor, 
+        uint256 fundingFeeAmountPerSize, 
+        uint256 longTokenClaimableFundingAmountPerSize, 
+        uint256 shortTokenClaimableFundingAmountPerSize, 
+        uint256 increasedAtBlock, 
+        uint256 decreasedAtBlock, 
+        bool isLong
+    ) {
+        IReaderPosition.Props memory position = IReaderPosition(reader).getPosition(dataStore, positionId);
+        
+        return (
+            position.addresses.account,
+            position.addresses.market,
+            position.addresses.collateralToken,
+            position.numbers.sizeInUsd,
+            position.numbers.sizeInTokens,
+            position.numbers.collateralAmount,
+            position.numbers.borrowingFactor,
+            position.numbers.fundingFeeAmountPerSize,
+            position.numbers.longTokenClaimableFundingAmountPerSize,
+            position.numbers.shortTokenClaimableFundingAmountPerSize,
+            position.numbers.increasedAtBlock,
+            position.numbers.decreasedAtBlock,
+            position.flags.isLong
+        );
+    }    
 
     function depositToPT(uint256 amount) external {
         // Transfer vault token dari pengguna ke kontrak PT
