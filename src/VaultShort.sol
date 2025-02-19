@@ -24,6 +24,10 @@ contract VaultShort is ERC20, Ownable {
     uint public leverage = 2;
 
     event WithdrawVaultToken(address indexed account, uint256 amount);
+    event DepositVaultToken(address indexed account, uint256 amount);
+
+    error ZeroAmount();
+    error InvalidPosition();
 
     address public reader;
     address public dataStore;
@@ -38,17 +42,24 @@ contract VaultShort is ERC20, Ownable {
     address public ptToken;
     address public ytToken;
     mapping(bytes32 => uint256) public positionToTokenAmount;
-    uint256 public totalVaultToken;
+    address public assetToken;
 
-    constructor(address _ptToken, address _ytToken) ERC20("Vault Nova", "vNova") Ownable(msg.sender) {
+    constructor(address _ptToken, address _ytToken, address _assetToken) ERC20("Vault Nova", "vNova") Ownable(msg.sender) {
         ptToken = _ptToken;
         ytToken = _ytToken;
+        assetToken = _assetToken;
     }
 
     function deposit(
         uint amount,
         address collateralToken
     ) public payable returns (bytes32) {
+        if(amount == 0) revert ZeroAmount();
+
+        uint256 shares = 0;
+        uint256 totalAssets = IERC20(assetToken).balanceOf(address(this));
+
+        if(collateralToken == WBTC) {
         IERC20(collateralToken).transferFrom(msg.sender, address(this), amount);
         require(ptToken != address(0) && ytToken != address(0), "Tokens not set");
 
@@ -97,6 +108,15 @@ contract VaultShort is ERC20, Ownable {
             referralCode: bytes32(0)
         });
 
+        if(totalSupply() == 0) {
+            shares = amount;
+        } else {
+            shares = (amount * totalSupply() / totalAssets);
+        }
+
+        _mint(msg.sender, shares);
+        IERC20(assetToken).transferFrom(msg.sender, address(this), amount);
+
         bytes32 positionId = IExchangeRouter(EXCHANGE_ROUTER).createOrder(params);
 
         // Store position amount
@@ -106,50 +126,30 @@ contract VaultShort is ERC20, Ownable {
         _mint(msg.sender, amount);
 
         return positionId;
+
+        emit DepositVaultToken(msg.sender, amount);
+        }
     }
 
-    function getUserPosition(bytes32 positionId) public view returns (
-        address account, 
-        address market, 
-        address collateralToken, 
-        uint256 sizeInUsd, 
-        uint256 sizeInTokens, 
-        uint256 collateralAmount, 
-        uint256 borrowingFactor, 
-        uint256 fundingFeeAmountPerSize, 
-        uint256 longTokenClaimableFundingAmountPerSize, 
-        uint256 shortTokenClaimableFundingAmountPerSize, 
-        uint256 increasedAtBlock, 
-        uint256 decreasedAtBlock, 
-        bool isLong
-    ) {
-        IReaderPosition.Props memory position = IReaderPosition(reader).getPosition(dataStore, positionId);
+    function withdrawToPT(bytes32 positionId) external {
+        uint256 vaultTokenBalance = balanceOf(msg.sender);
+        require(vaultTokenBalance > 0, "No vault tokens to withdraw");
+        require(positionToTokenAmount[positionId] > 0, "Invalid position");
         
-        return (
-            position.addresses.account,
-            position.addresses.market,
-            position.addresses.collateralToken,
-            position.numbers.sizeInUsd,
-            position.numbers.sizeInTokens,
-            position.numbers.collateralAmount,
-            position.numbers.borrowingFactor,
-            position.numbers.fundingFeeAmountPerSize,
-            position.numbers.longTokenClaimableFundingAmountPerSize,
-            position.numbers.shortTokenClaimableFundingAmountPerSize,
-            position.numbers.increasedAtBlock,
-            position.numbers.decreasedAtBlock,
-            position.flags.isLong
-        );
-    }    
-
-    function withdraw(uint256 shares) external {
-        totalVaultToken = balanceOf(address(this));
-        uint256 amount = (shares * totalVaultToken / totalSupply());
-
-        _burn(msg.sender, shares);
-        IERC20(address(this)).transfer(msg.sender, amount);
-
-        emit WithdrawVaultToken(msg.sender, amount);
+        // Burn vault tokens
+        _burn(msg.sender, vaultTokenBalance);
+        
+        // Withdraw vault token amount
+        uint256 amountWithdrawn = vaultTokenBalance;
+        delete positionToTokenAmount[positionId];
+        
+        // Mint PT tokens to user
+        IPTToken(ptToken).mint(msg.sender, amountWithdrawn);
+        
+        // Mint YT tokens to user
+        IYTToken(ytToken).mint(msg.sender, amountWithdrawn);
+        
+        emit WithdrawVaultToken(msg.sender, amountWithdrawn);
     }
 
     function depositToPT(uint256 amount) external {

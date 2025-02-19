@@ -19,11 +19,13 @@ contract VaultShortTest is Test {
     PTToken public ptToken;
     YTToken public ytToken;
 
+    address public user = makeAddr("user");
+
     function setUp() public {
         vm.createSelectFork("https://arb-mainnet.g.alchemy.com/v2/Ea4M-V84UObD22z2nNlwDD9qP8eqZuSI", 301883180);
 
         deal(wbtc, address(this), 10e8);
-        vaultShort = new VaultShort(address(0), address(0));
+        vaultShort = new VaultShort(address(0), address(0), address(0));
         ptToken = new PTToken(address(vaultShort));
         ytToken = new YTToken(address(vaultShort));
 
