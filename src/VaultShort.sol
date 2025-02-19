@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+<<<<<<< HEAD
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IGMX.sol";
+=======
+import {IExchangeRouter, IReaderOrder, IReaderPosition} from "./interfaces/IGMX.sol";
+import {console} from "forge-std/Test.sol";
+>>>>>>> dcc9285b4c5cb52ca43b5418ed2b4f73878ac12c
 
 pragma solidity ^0.8.13;
 
@@ -48,6 +53,10 @@ contract VaultShort is ERC20, Ownable {
         ptToken = _ptToken;
         ytToken = _ytToken;
         assetToken = _assetToken;
+    }
+
+    function getPosition () public view returns (IReaderPosition.Props memory) {
+
     }
 
     function deposit(
