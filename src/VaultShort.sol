@@ -2,7 +2,8 @@
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IExchangeRouter, IReaderOrder} from "./interfaces/IGMX.sol";
+import {IExchangeRouter, IReaderOrder, IReaderPosition} from "./interfaces/IGMX.sol";
+import {console} from "forge-std/Test.sol";
 
 pragma solidity ^0.8.13;
 
@@ -34,6 +35,10 @@ contract VaultShort is ERC20 {
 
         uint256 totalAsset = order.numbers.sizeDeltaUsd * 1e8 / 2 / 1e35 * 1e8;
         return totalAsset;
+    }
+
+    function getPosition () public view returns (IReaderPosition.Props memory) {
+
     }
 
     function deposit(
