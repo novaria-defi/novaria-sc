@@ -2,16 +2,17 @@
 pragma solidity ^0.8.13;
 
 interface OrderStoreUtils {
-    function getAccountOrderKeys(address dataStore, address account, uint256 start, uint256 end) external view returns (bytes32[] memory);
+    function getAccountOrderKeys(address dataStore, address account, uint256 start, uint256 end)
+        external
+        view
+        returns (bytes32[] memory);
 }
 
 interface ReaderUtils {
-    function getAccountOrders(
-        address dataStore,
-        address account,
-        uint256 start,
-        uint256 end
-    ) external view returns (Order.Props[] memory);
+    function getAccountOrders(address dataStore, address account, uint256 start, uint256 end)
+        external
+        view
+        returns (Order.Props[] memory);
 }
 
 interface Order {
@@ -117,15 +118,9 @@ interface IExchangeRouter {
         bytes32 referralCode;
     }
 
-    function createOrder(
-        CreateOrderParams memory params
-    ) external payable returns (bytes32);
+    function createOrder(CreateOrderParams memory params) external payable returns (bytes32);
 
-    function sendTokens(
-        address token,
-        address receiver,
-        uint256 amount
-    ) external;
+    function sendTokens(address token, address receiver, uint256 amount) external;
 
     function sendWnt(address receiver, uint256 amount) external payable;
 }
@@ -166,17 +161,12 @@ interface IReaderOrder {
         Flags flags;
     }
 
-    function getOrder(
-        address dataStore,
-        bytes32 key
-    ) external view returns (Props memory);
+    function getOrder(address dataStore, bytes32 key) external view returns (Props memory);
 
-    function getAccountOrders(
-        address dataStore,
-        address account,
-        uint256 start,
-        uint256 end
-    ) external view returns (Order.Props[] memory);
+    function getAccountOrders(address dataStore, address account, uint256 start, uint256 end)
+        external
+        view
+        returns (Order.Props[] memory);
 }
 
 interface IReaderPosition {
@@ -208,19 +198,5 @@ interface IReaderPosition {
         Flags flags;
     }
 
-<<<<<<< HEAD
     function getPosition(address dataStore, bytes32 key) external view returns (Props memory);
-}
-
-interface IDataStore {
-    function getAddress(bytes32 key) external view returns (address);
-    function getUint(bytes32 key) external view returns (uint256);
-    function getBool(bytes32 key) external view returns (bool);
-    function getBytes32(bytes32 key) external view returns (bytes32);
-=======
-    function getPosition(
-        address dataStore,
-        bytes32 key
-    ) external view returns (Props memory);
->>>>>>> dcc9285b4c5cb52ca43b5418ed2b4f73878ac12c
 }
