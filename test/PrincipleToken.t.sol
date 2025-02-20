@@ -29,7 +29,7 @@ contract PrincipleTokenTest is Test {
         deal(address(mockVault), address(this), 100_000e18);
     }
 
-    function test_deploy() public {
+    function test_deploy() public view {
         assertEq(address(yieldToken), expectedYieldTokenAddress);
         assertEq(address(principleToken), expectedPrincipleTokenAddress);
     }
