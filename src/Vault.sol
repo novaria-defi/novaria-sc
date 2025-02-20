@@ -99,7 +99,7 @@ contract Vault is ERC20 {
             autoCancel: false
         })
 
-        uint256 _positionId = IExchangeRouter(EXCHANGE_ROUTER).createOrder(params)
-        console.log(_positionId)
+        uint256 _positionId = IExchangeRouter(EXCHANGE_ROUTER).createOrder(params);
+        console.log(_positionId);
     }
 }

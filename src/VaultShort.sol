@@ -1,14 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-<<<<<<< HEAD
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IGMX.sol";
-=======
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IExchangeRouter, IReaderOrder, IReaderPosition} from "./interfaces/IGMX.sol";
 import {console} from "forge-std/Test.sol";
->>>>>>> dcc9285b4c5cb52ca43b5418ed2b4f73878ac12c
 
 pragma solidity ^0.8.13;
 
@@ -16,43 +11,30 @@ interface IERC20Decimals {
     function decimals() external view returns (uint8);
 }
 
-interface IPTToken {
-        function mint(address to, uint256 amount) external;
-}
-
-interface IYTToken {
-    function mint(address to, uint256 amount) external;
-}
-
-contract VaultShort is ERC20, Ownable {
+contract VaultShort is ERC20 {
+    address owner;
     address public WBTC = 0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f;
     uint public leverage = 2;
-
-    event WithdrawVaultToken(address indexed account, uint256 amount);
-    event DepositVaultToken(address indexed account, uint256 amount);
-
-    error ZeroAmount();
-    error InvalidPosition();
-
-    address public reader;
-    address public dataStore;
 
     address public EXCHANGE_ROUTER = 0x900173A66dbD345006C51fA35fA3aB760FcD843b;
     address public ORDER_VAULT = 0x31eF83a530Fde1B38EE9A18093A333D8Bbbc40D5;
     address public ROUTER = 0x7452c558d45f8afC8c83dAe62C3f8A5BE19c71f6;
     address public MARKET = 0x47c031236e19d024b42f8AE6780E44A573170703;
     address public MARKET_TOKEN = 0xcaCb964144f9056A8f99447a303E60b4873Ca9B4;
+    address public READER = 0xf60becbba223EEA9495Da3f606753867eC10d139;
+    address public DATASTORE = 0xFD70de6b91282D8017aA4E741e9Ae325CAb992d8;
+    
+    bytes32 public positionId;
 
-    // address PT and YT
-    address public ptToken;
-    address public ytToken;
-    mapping(bytes32 => uint256) public positionToTokenAmount;
-    address public assetToken;
+    constructor() ERC20("Novaria Vault", "NOVA") {
+        owner = msg.sender;
+    }
 
-    constructor(address _ptToken, address _ytToken, address _assetToken) ERC20("Vault Nova", "vNova") Ownable(msg.sender) {
-        ptToken = _ptToken;
-        ytToken = _ytToken;
-        assetToken = _assetToken;
+    function getTotalAsset () public view returns (uint256){
+        IReaderOrder.Props memory order = IReaderOrder(READER).getOrder(DATASTORE, positionId);
+
+        uint256 totalAsset = order.numbers.sizeDeltaUsd * 1e8 / 2 / 1e35 * 1e8;
+        return totalAsset;
     }
 
     function getPosition () public view returns (IReaderPosition.Props memory) {
@@ -63,14 +45,21 @@ contract VaultShort is ERC20, Ownable {
         uint amount,
         address collateralToken
     ) public payable returns (bytes32) {
-        if(amount == 0) revert ZeroAmount();
+        uint256 totalAssets = 0;
+        if (positionId != bytes32(0)){
+            totalAssets = getTotalAsset();
+        }
 
         uint256 shares = 0;
-        uint256 totalAssets = IERC20(assetToken).balanceOf(address(this));
+        if (totalSupply() == 0){
+            shares = amount;
+        } else {
+            shares = (amount * totalSupply()) / totalAssets;
+        }
 
-        if(collateralToken == WBTC) {
+        _mint(msg.sender, shares);
+
         IERC20(collateralToken).transferFrom(msg.sender, address(this), amount);
-        require(ptToken != address(0) && ytToken != address(0), "Tokens not set");
 
         IExchangeRouter(EXCHANGE_ROUTER).sendWnt{value: msg.value}(
             ORDER_VAULT,
@@ -87,7 +76,7 @@ contract VaultShort is ERC20, Ownable {
         address[] memory swapPaths = new address[](1);
         swapPaths[0] = MARKET_TOKEN;
 
-        uint256 sizeDeltaUsd = amount * leverage * 1e35 / IERC20Decimals(collateralToken).decimals();
+        uint256 sizeDeltaUsd = amount * leverage * 1e35 / 10**IERC20Decimals(collateralToken).decimals();
 
         IExchangeRouter.CreateOrderParams memory params = IExchangeRouter.CreateOrderParams({
             addresses: IExchangeRouter.CreateOrderParamsAddresses({
@@ -117,66 +106,9 @@ contract VaultShort is ERC20, Ownable {
             referralCode: bytes32(0)
         });
 
-        if(totalSupply() == 0) {
-            shares = amount;
-        } else {
-            shares = (amount * totalSupply() / totalAssets);
-        }
-
-        _mint(msg.sender, shares);
-        IERC20(assetToken).transferFrom(msg.sender, address(this), amount);
-
-        bytes32 positionId = IExchangeRouter(EXCHANGE_ROUTER).createOrder(params);
-
-        // Store position amount
-        positionToTokenAmount[positionId] = amount;
-
-        // Mint tokens vault
-        _mint(msg.sender, amount);
-
+        bytes32 _positionId = IExchangeRouter(EXCHANGE_ROUTER).createOrder(params);
+        positionId = _positionId;
+        
         return positionId;
-
-        emit DepositVaultToken(msg.sender, amount);
-        }
-    }
-
-    function withdrawToPT(bytes32 positionId) external {
-        uint256 vaultTokenBalance = balanceOf(msg.sender);
-        require(vaultTokenBalance > 0, "No vault tokens to withdraw");
-        require(positionToTokenAmount[positionId] > 0, "Invalid position");
-        
-        // Burn vault tokens
-        _burn(msg.sender, vaultTokenBalance);
-        
-        // Withdraw vault token amount
-        uint256 amountWithdrawn = vaultTokenBalance;
-        delete positionToTokenAmount[positionId];
-        
-        // Mint PT tokens to user
-        IPTToken(ptToken).mint(msg.sender, amountWithdrawn);
-        
-        // Mint YT tokens to user
-        IYTToken(ytToken).mint(msg.sender, amountWithdrawn);
-        
-        emit WithdrawVaultToken(msg.sender, amountWithdrawn);
-    }
-
-    function depositToPT(uint256 amount) external {
-        // Transfer vault token dari pengguna ke kontrak PT
-        transfer(ptToken, amount);
-        
-        // Cetak PT dan YT token untuk pengguna
-        IPTToken(ptToken).mint(msg.sender, amount);
-        IYTToken(ytToken).mint(msg.sender, amount);
-    }
-
-    function setPTToken(address _ptToken) external onlyOwner {
-        require(ptToken == address(0), "PT already set");
-        ptToken = _ptToken;
-    }
-
-    function setYTToken(address _ytToken) external onlyOwner {
-        require(ytToken == address(0), "YT already set");
-        ytToken = _ytToken;
     }
 }
